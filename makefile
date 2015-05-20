@@ -1,35 +1,63 @@
+MAKEFLAGS += -rR --include-dir=$(CURDIR)
+MAKEFLAGS += --no-print-directory
 
-CC      = gcc
-CFLAGS  = -Wall -g
-LDFLAGS =
-LIBS    = -llua
+export CC = gcc
+export AT = @
+export MKDIR  = mkdir -p
+export RM     = rm -rf
 
-INCLUDE = -I./src/include
-OBJDIR=./objs
+########################################
+# User setting
+USE_DEBUG=yes
 
-SERVER=server
-CLINET=clinet
+TOP_DIR=.
+OUTPUT_DIR = work
+BIN_DIR = $(OUTPUT_DIR)/bin
+LIB_DIR = $(OUTPUT_DIR)/lib
+TARGET=sample
 
-SERVER_SRCS = $(shell find src/server -name "*.c")
-CLINET_SRCS = $(shell find src/client -name "*.c")
-
-
-all:$(OBJDIR) $(SERVER) $(CLINET)
-
-$(OBJDIR):
-	@mkdir -p $(OBJDIR)
-
-$(SERVER):$(addprefix $(OBJDIR)/, $(patsubst %.c, %.o, $(SERVER_SRCS)))
-	$(CC) -o $@ $^ $(LDFLAGS)
-
-$(CLINET):$(addprefix $(OBJDIR)/, $(patsubst %.c, %.o, $(CLINET_SRCS)))
-	$(CC) -o $@ $^ $(LDFLAGS) $(LIBS)
+########################################
+# helpers
+source-dir-to-binary-dir = $(addprefix $(OUTPUT_DIR)/, $1)
+source-to-object = $(call source-dir-to-binary-dir, \
+	$(subst .c,.o,$(filter %.c,$1))) \
 
 
-$(OBJDIR)/%.o : %.c
-	@mkdir -p $(dir $@); \
+SRCS-lua=$(shell find lua -name "*.c")
+SRCS-core=$(shell find  src -name "*.c")
+
+SRCS+=$(SRCS-core) $(SRCS-lua)
+INCLUDE=-I./include -I.
+CFLAGS= -Wall -g
+LIB-DIR = -L$(LIB_DIR)
+LIB-DIR = 
+LDFLAGS = -llua
+
+objs=$(call source-to-object, $(SRCS))
+
+
+.PHONY:all clean
+
+all:$(BIN_DIR)/$(TARGET)
+
+$(BIN_DIR)/$(TARGET):$(objs)
+	@mkdir -p $(dir $@)
+	$(CC) -o $@ $^ $(LIB-DIR) $(LDFLAGS)
+
+
+$(OUTPUT_DIR)/%.o:%.c
+	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) $(INCLUDE) -o $@ -c $<
 
-
 clean:
-	@rm -rf $(OBJDIR) $(SERVER) $(CLINET)
+	$(AT)$(RM) $(OUTPUT_DIR) $(TARGET)
+
+
+############
+# utils
+
+tags:
+	$(RM) tags
+	@find . -name "*.[ch]" | xargs ctags
+
+
